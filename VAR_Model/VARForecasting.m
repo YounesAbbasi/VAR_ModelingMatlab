@@ -11,9 +11,8 @@ TlData = readtable('testdata.xlsx', 'ReadRowNames', true);
 Mdata = table2array(TlData);
 ColName = TlData.Properties.VariableNames;
 [n,c]=size(Mdata);
-%%-------------------------%
 %% 
-% Plot raw Data 
+%Plot raw Data 
 for i=1:c
     figure
     plot(Mdata(:,i));
@@ -27,27 +26,7 @@ for i=1:c
 end
 %%
 % ADF test and station time series
-StationMat = zeros(n-1,c);
-for z=1:c
-    if 1 == adftest(Mdata(:,z))
-        disp("It's Station")
-        disp(z)
-        StationMat(:,z)=Mdata(2:end,z);
-    else
-        if 1 == adftest(log(Mdata(:,z)))
-            disp('log station')
-            disp(z)
-            StationMat(:,z)=log(Mdata(:,z));
-        else 
-            if 1 == adftest(diff(log(Mdata(:,z))))
-             disp('percent change station')
-             disp(z)
-             StationMat(:,z)=diff(log(Mdata(:,z)));
-            end
-        end
-    end
-end
-
+StationMat = stationData(Mdata);
 %%
 % Select time series for modeling
 SelectedCol = [1,2 ,5,6];
@@ -63,18 +42,38 @@ MdlP = varm(cc,NLag);
 MdlP.SeriesNames = ColNameModel;
 
 % Test and train data
-EstMdlP = estimate(MdlP,EstY(1:Train,:));
+[EstMdlP,~,~,ResidualP] = estimate(MdlP,EstY(1:Train,:));
+EstMSE = sum((ResidualP.*100).^2)./size(EstY(1:Train,:),1);
 numperiodsP = size(EstY,1)-Train;
 [YfP, YMSEP] = forecast(EstMdlP,numperiodsP,EstY(1:Train,:));
 Error = EstY(Train+1:end,:)-YfP;
-MPE = sum(abs(Error./EstY(Train+1:end,:))*100)/size(YfP,1);
-
+MPEP = sum(abs(Error./abs(EstY(Train+1:end,:)))*100)/size(YfP,1);
+%% 
+[hJP,hLP,hHP] = diagtest(ResidualP);
+%%
+extractMSE = @(x)diag(x)';
+MSEP = cellfun(extractMSE,YMSEP,'UniformOutput',false);
+SEP = sqrt(cell2mat(MSEP));
+%%
+% 95 percent confidence interval 
+ForecastFIP = zeros(numperiodsP,MdlP.NumSeries,2);
+ForecastFIP(:,:,1) = YfP - 2*SEP;
+ForecastFIP(:,:,2) = YfP + 2*SEP;
+% 68 percent confidence interval 
+ForecastFI68P = zeros(numperiodsP,MdlP.NumSeries,2);
+ForecastFI68P(:,:,1) = YfP - SEP;
+ForecastFI68P(:,:,2) = YfP + SEP;
+%%
 % Plot forecasting 
 for sp=1:cc
     figure
-    h1 = plot(EstY(Train+1:end,sp));
+    h1 = plot(EstY(:,sp));
     hold on
-    h2 = plot(1:numperiodsP,YfP(:,sp));
+    h2 = plot(Train+1:Train+numperiodsP,YfP(:,sp),'k');
+    h3 = plot(Train+1:Train+numperiodsP, ForecastFIP(:,sp,1), 'g--');
+    plot(Train+1:Train+numperiodsP, ForecastFIP(:,sp,2), 'g--');
+    h4 = plot(Train+1:Train+numperiodsP, ForecastFI68P(:,sp,1), 'r--');
+    plot(Train+1:Train+numperiodsP, ForecastFI68P(:,sp,2), 'r--');
     title(ColNameModel(sp))
     ylabel("Growth Rate")
     xlabel("Date")
@@ -86,8 +85,13 @@ end
 %% 
 %%% Out sample forecasting
 % Estimation and forecasting model
-EstMdl = estimate(Mdl,EstY);
+Mdl = varm(cc,NLag);
+[EstMdl,~,~,Residual] = estimate(Mdl,EstY);
+%%
+[hJ,hL,hH] = diagtest(Residual);
+%%
 numperiods = 12; % Number of period forecasting
+
 Y0 = EstY;
 [Yf, YMSE] = forecast(EstMdl,numperiods,Y0);
 %%
@@ -109,9 +113,9 @@ for s=1:cc
     figure
     h1 = plot(EstY((end-49):end,s));
     hold on
-    h2 = plot(51:50+numperiods,Yf(:,s));
-    h3 = plot(51:50+numperiods, ForecastFI(:,s,1), 'k--');
-    plot(51:50+numperiods, ForecastFI(:,s,2), 'k--');
+    h2 = plot(51:50+numperiods,Yf(:,s),'k');
+    h3 = plot(51:50+numperiods, ForecastFI(:,s,1), 'g--');
+    plot(51:50+numperiods, ForecastFI(:,s,2), 'g--');
     h4 = plot(51:50+numperiods, ForecastFI68(:,s,1), 'r--');
     plot(51:50+numperiods, ForecastFI68(:,s,2), 'r--');
     title(ColNameModel(s))

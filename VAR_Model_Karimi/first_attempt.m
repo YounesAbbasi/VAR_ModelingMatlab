@@ -23,7 +23,14 @@ end
 
 %% data preprocessing (scaling)
 [data, maxs] = scaling(numvar,data);
-
+%%
+% Cointegration test
+% h0 = no cointegration
+% hC =1 means rejection of h0
+hC = egcitest(data);
+%%
+data = stationData(data);
+datalen=size(data,1);
 %% datetable
 datelen = datenum(1384,1:datalen,30);
 datetable = datetime(datelen,'Format','dd-MM-yyyy','convertFrom','datenum');
