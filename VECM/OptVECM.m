@@ -15,7 +15,16 @@ v = nchoosek(cols,j);
         selectedcol = [targetSeries, v(row,:)];
         data = Mdata(:,selectedcol);
         for lag=0:maxlag
-            for rank=0:size(data,2)
+            h = jcitest(data, Lags=lag);
+            hcol = 1;
+            while table2array(h(1,hcol))>=1
+            hcol=hcol+1;
+            if hcol>size(data,2)
+                hcol=1;
+                break
+            end
+            end
+            for rank= (hcol-1):size(data,2)
             model = vecm(size(data,2),rank,lag);
             MdataTrain =log(data(1:round(n*TrainPercent),:))*100;
             EstModel = estimate(model,MdataTrain);
@@ -34,4 +43,3 @@ NumSeries = model.NumSeries;
 resultSumm = summarize(model);
 selecteddata = Mdata(:,selectedcol);
 end
-

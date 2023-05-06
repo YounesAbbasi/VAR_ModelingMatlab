@@ -23,10 +23,26 @@ Mdata = Mdata(:,SelectedCol);
 [n,c]=size(Mdata);
 %%
 % In smaple Forecasting
-TrainPercent = 0.95;
+TrainPercent = 0.98;
 numperiods = n-round(n*TrainPercent);
 ColNameModel = ColName(SelectedCol);
-TargetVariables = 3;
+TargetVariables = 4;
+%%
+% h = jcitest(Mdata(:,[1,3]), Lags=0);
+% hcol = 1;
+% while table2array(h(1,hcol))>=1
+% hcol=hcol+1;
+% end
+%%
+% h = jcitest(Mdata(:,[1,3]), Lags=0);
+% hcol = 1;
+% while table2array(h(1,hcol))>=1
+% hcol=hcol+1;
+% if hcol>size(Mdata(:,[1,3]),2)
+%     hcol=1;
+%     break
+% end
+% end
 %%
 [MAPE, RevForData,ForData, ForMSE, NumSeries, resultSumm, selecteddata] = OptVECM(c,10,Mdata,TrainPercent,TargetVariables);
 %%
